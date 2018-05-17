@@ -189,18 +189,27 @@
 	function dataCallback( query, range, callback ) {
 		var that = this;
 
-		// Remove scheduled callback - it's no longer valid (#1972).
-		if ( this.scheduled ) {
-			clearTimeout( this.scheduled );
-		}
-
 		// We are removing marker here to give clean query result for the endpoint callback.
 		if ( this.marker ) {
 			query = query.substring( 1 );
 		}
 
+		// Skip throttling if it has been disabled.
+		if ( !isNaN( this.throttle ) ) {
+			createFeed();
+		}
+
+		// Remove scheduled callback - it's no longer valid.
+		if ( this.scheduled ) {
+			clearTimeout( this.scheduled );
+		}
+
 		// Schedule callback so it will be fired after fixed throttle time (#1972).
 		this.scheduled = setTimeout( function() {
+			createFeed();
+		}, this.throttle );
+
+		function createFeed() {
 			if ( CKEDITOR.tools.array.isArray( that.feed ) ) {
 				createArrayFeed();
 			} else if ( typeof that.feed === 'string' ) {
@@ -211,8 +220,7 @@
 					marker: that.marker
 				}, resolveCallbackData );
 			}
-
-		}, this.throttle );
+		}
 
 		function createArrayFeed() {
 			var data = indexArrayFeed( that.feed ).filter( function( item ) {
@@ -463,6 +471,8 @@
 	 *
 	 * Higher levels of throttle threshold will create visible delay for mentions dropdown
 	 * but also save the number of backend HTTP requests.
+	 *
+	 * Throttling can be disabled by setting this property to `null`.
 	 *
 	 * @property {Number} [throttle=200]
 	 */

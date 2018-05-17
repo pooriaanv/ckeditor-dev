@@ -13,6 +13,11 @@
 
 		setUp: function() {
 			this.createMentionsInstance = function( config ) {
+				if ( !config.hasOwnProperty( 'throttle' ) ) {
+					// Disable throttling by default to simplify tests.
+					config.throttle = null;
+				}
+
 				this._mentions = new CKEDITOR.plugins.mentions( this.editor, config );
 				return this._mentions;
 			};
