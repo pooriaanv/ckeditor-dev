@@ -7,7 +7,8 @@
 
 ( function() {
 	var MARKER = '@',
-		MIN_CHARS = 2;
+		MIN_CHARS = 2,
+		THROTTLE = 200;
 
 	CKEDITOR.plugins.add( 'mentions', {
 		requires: 'autocomplete,textmatch,ajax',
@@ -89,6 +90,14 @@
 		this.pattern = config.pattern || createPattern( this.marker, this.minChars );
 
 		/**
+		 * See {@link CKEDITOR.plugins.mentions.configDefinition#throttle throttle}.
+		 *
+		 * @property {Number} [throttle=200]
+		 * @readonly
+		 */
+		this.throttle = config.hasOwnProperty( 'throttle' ) ? config.throttle : THROTTLE;
+
+		/**
 		 * {@link CKEDITOR.plugins.autocomplete Autocomplete} instance used by mentions feature to implement autocompletion logic.
 		 *
 		 * @property {CKEDITOR.plugins.autocomplete}
@@ -96,7 +105,7 @@
 		 */
 		this._autocomplete = new CKEDITOR.plugins.autocomplete( editor,
 			getTextTestCallback( this.marker, this.minChars, this.pattern ),
-			getDataCallback( feed, this.marker, this.caseSensitive ) );
+			getDataCallback( feed, this ) );
 
 		if ( this.template ) {
 			this.changeViewTemplate( this.template );
@@ -168,70 +177,88 @@
 		}
 	}
 
-	function getDataCallback( feed, marker, caseSensitive ) {
-		return function( query, range, callback ) {
-			// We are removing marker here to give clean query result for the endpoint callback.
-			if ( marker ) {
-				query = query.substring( 1 );
-			}
+	function getDataCallback( feed, mentions ) {
+		return CKEDITOR.tools.bind( dataCallback,  {
+			feed: feed,
+			marker: mentions.marker,
+			caseSensitive: mentions.caseSensitive,
+			throttle: mentions.throttle
+		} );
+	}
 
-			if ( CKEDITOR.tools.array.isArray( feed ) ) {
+	function dataCallback( query, range, callback ) {
+		var that = this;
+
+		// Remove scheduled callback - it's no longer valid (#1972).
+		if ( this.scheduled ) {
+			clearTimeout( this.scheduled );
+		}
+
+		// We are removing marker here to give clean query result for the endpoint callback.
+		if ( this.marker ) {
+			query = query.substring( 1 );
+		}
+
+		// Schedule callback so it will be fired after fixed throttle time (#1972).
+		this.scheduled = setTimeout( function() {
+			if ( CKEDITOR.tools.array.isArray( that.feed ) ) {
 				createArrayFeed();
-			} else if ( typeof feed === 'string' ) {
+			} else if ( typeof that.feed === 'string' ) {
 				createUrlFeed();
 			} else {
-				feed( {
+				that.feed( {
 					query: query,
-					marker: marker
+					marker: that.marker
 				}, resolveCallbackData );
 			}
 
-			function createArrayFeed() {
-				var data = indexArrayFeed( feed ).filter( function( item ) {
-					var itemName = item.name;
+		}, this.throttle );
 
-					if ( !caseSensitive ) {
-						itemName = itemName.toLowerCase();
-						query = query.toLowerCase();
-					}
+		function createArrayFeed() {
+			var data = indexArrayFeed( that.feed ).filter( function( item ) {
+				var itemName = item.name;
 
-					return itemName.indexOf( query ) === 0;
-				} );
-
-				resolveCallbackData( data );
-			}
-
-			function indexArrayFeed( feed ) {
-				var index = 1;
-				return CKEDITOR.tools.array.reduce( feed, function( current, name ) {
-					current.push( { name: name, id: index++ } );
-					return current;
-				}, [] );
-			}
-
-			function createUrlFeed() {
-				var encodedUrl = new CKEDITOR.template( feed )
-					.output( { encodedQuery: encodeURIComponent( query ) } );
-
-				CKEDITOR.ajax.load( encodedUrl, function( data ) {
-					resolveCallbackData( JSON.parse( data ) );
-				} );
-			}
-
-			function resolveCallbackData( data ) {
-				if ( !data ) {
-					return;
+				if ( !that.caseSensitive ) {
+					itemName = itemName.toLowerCase();
+					query = query.toLowerCase();
 				}
 
-				// We don't want to change item data, so lets create new one.
-				var newData = CKEDITOR.tools.array.map( data, function( item ) {
-					var name = marker + item.name;
-					return CKEDITOR.tools.object.merge( item, { name: name } );
-				} );
+				return itemName.indexOf( query ) == 0;
+			} );
 
-				callback( newData );
+			resolveCallbackData( data );
+		}
+
+		function indexArrayFeed( feed ) {
+			var index = 1;
+			return CKEDITOR.tools.array.reduce( feed, function( current, name ) {
+				current.push( { name: name, id: index++ } );
+				return current;
+			}, [] );
+		}
+
+		function createUrlFeed() {
+			var encodedUrl = new CKEDITOR.template( that.feed )
+				.output( { encodedQuery: encodeURIComponent( query ) } );
+
+			CKEDITOR.ajax.load( encodedUrl, function( data ) {
+				resolveCallbackData( JSON.parse( data ) );
+			} );
+		}
+
+		function resolveCallbackData( data ) {
+			if ( !data ) {
+				return;
 			}
-		};
+
+			// We don't want to change item data, so lets create new one.
+			var newData = CKEDITOR.tools.array.map( data, function( item ) {
+				var name = that.marker + item.name;
+				return CKEDITOR.tools.object.merge( item, { name: name } );
+			} );
+
+			callback( newData );
+		}
 	}
 
 	CKEDITOR.plugins.mentions = Mentions;
@@ -429,5 +456,14 @@
 	 * ```
 	 *
 	 * @property {RegExp} pattern
+	 */
+
+	/**
+	 * Indicates throttle threshold mitigating data feed requests.
+	 *
+	 * Higher levels of throttle threshold will create visible delay for mentions dropdown
+	 * but also save the number of backend HTTP requests.
+	 *
+	 * @property {Number} [throttle=200]
 	 */
 } )();
