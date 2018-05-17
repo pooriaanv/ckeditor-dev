@@ -225,7 +225,10 @@
 
 		'test attach mentions from configuration': function() {
 			var config = {
-				mentions: [ { feed: feedData } ]
+				mentions: [ {
+					feed: feedData,
+					throttle: null
+				} ]
 			};
 
 			bender.editorBot.create( { name: 'editor_config_attach', config: config }, function( bot ) {
@@ -273,6 +276,31 @@
 
 			this.editor.editable().findOne( 'p' ).getFirst().setText( '@Annab' );
 			mentions._autocomplete.editor.editable().fire( 'keyup', new CKEDITOR.dom.event( {} ) );
+
+			wait();
+		},
+
+		// (#1972)
+		'test throttling feed data': function() {
+			var mentions = this.createMentionsInstance( {
+					feed: feedData,
+					throttle: 50
+				} ),
+				halfTime = 25;
+
+			this.editorBot.setHtmlWithSelection( '<p>@Ann^</p>' );
+			mentions._autocomplete.editor.editable().fire( 'keyup', new CKEDITOR.dom.event( {} ) );
+
+			setTimeout( function() {
+				testView( mentions, [], true );
+
+				setTimeout( function() {
+					resume( function() {
+						testView( mentions, expectedFeedData, true );
+					} );
+				}, halfTime ); // View should be opened after throttle timeout.
+
+			}, halfTime ); // At this point view should be closed.
 
 			wait();
 		}
