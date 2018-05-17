@@ -195,7 +195,7 @@
 		}
 
 		// Skip throttling if it has been disabled.
-		if ( !isNaN( this.throttle ) ) {
+		if ( isNaN( this.throttle ) ) {
 			createFeed();
 		}
 
