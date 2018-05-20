@@ -205,9 +205,7 @@
 		}
 
 		// Schedule callback so it will be fired after fixed throttle time (#1972).
-		this.scheduled = setTimeout( function() {
-			createFeed();
-		}, this.throttle );
+		this.scheduled = setTimeout( createFeed, this.throttle );
 
 		function createFeed() {
 			if ( CKEDITOR.tools.array.isArray( that.feed ) ) {
