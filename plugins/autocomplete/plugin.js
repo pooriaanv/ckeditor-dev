@@ -384,7 +384,7 @@
 				this.model.setActive( true );
 				this.view.open();
 				this.model.selectFirst();
-				this.view.updatePosition();
+				this.view.updatePosition( this.model.range );
 			}
 		},
 
@@ -396,7 +396,7 @@
 		 */
 		onChange: function() {
 			if ( this.model.isActive ) {
-				this.view.updatePosition();
+				this.view.updatePosition( this.model.range );
 			}
 		},
 
@@ -653,9 +653,8 @@
 		 * @returns {Number} rect.top
 		 * @returns {Number} rect.bottom
 		 */
-		getCaretRect: function() {
-			var caretClientRect = this.editor.getSelection()
-				.getRanges()[ 0 ]
+		getCaretRect: function( range ) {
+			var caretClientRect = range
 				.getClientRects()[ 0 ],
 				offset,
 				editable = this.editor.editable();
@@ -873,8 +872,11 @@
 		 * {@link #setPosition} to move the panel to the best position close
 		 * to the caret.
 		 */
-		updatePosition: function() {
-			this.setPosition( this.getCaretRect() );
+		updatePosition: function( range ) {
+			range = range.clone();
+			range.collapse( true );
+
+			this.setPosition( this.getCaretRect( range ) );
 		}
 	};
 
