@@ -152,8 +152,12 @@
 			}
 
 			// Do not proceed if a query is a part of word.
-			var prevChar = text[ match.index - 1];
-			if ( prevChar !== undefined && !prevChar.match( /\s+/ ) ) {
+			var prev = text.substring( 0, match.index ),
+				endsWithSpace = prev.match( /^.*\s+$/ ),
+				// Accept filling char sequence (#2038).
+				isFillingCharSequence = prev === CKEDITOR.dom.selection.FILLING_CHAR_SEQUENCE;
+
+			if ( prev && !endsWithSpace && !isFillingCharSequence ) {
 				return null;
 			}
 
