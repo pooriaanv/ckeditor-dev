@@ -396,6 +396,13 @@
 			editable.fire( 'keydown', new CKEDITOR.dom.event( { keyCode: 13 } ) ); // ENTER
 
 			assert.areEqual( '<p><strong>@Anna Doe</strong></p>', editable.getData() );
+		},
+
+		// (#2038)
+		'test query starting with filling char sequence': function() {
+			this.editorBot.setHtmlWithSelection( '<strong>' + CKEDITOR.dom.selection.FILLING_CHAR_SEQUENCE + '@Ann^</strong>' );
+
+			testView( this.createMentionsInstance( { feed: feedData } ), expectedFeedData );
 		}
 	} );
 
