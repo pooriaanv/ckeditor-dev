@@ -1,4 +1,4 @@
-# CKEditor 4 - The best browser-based WYSIWYG editor
+# CKEditor 4 - The best browser-based WYSIWYG editor test
 
 [![devDependencies Status](https://david-dm.org/ckeditor/ckeditor-dev/dev-status.svg)](https://david-dm.org/ckeditor/ckeditor-dev?type=dev)
 
